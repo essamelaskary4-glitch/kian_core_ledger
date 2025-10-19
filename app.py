@@ -83,3 +83,5 @@ if __name__ == '__main__':
     print("--- AAL-CORE: بدأ تشغيل Zero-Cost Monetizable API (Flask) ---")
     # يتم تشغيل التطبيق في وضع التصحيح (Debug Mode) ليسهل عليك المتابعة
     app.run(debug=True)
+    # Mandatory for PythonAnywhere
+application = app
