@@ -10,7 +10,17 @@ import time
 
 app = Flask(__name__)
 # تهيئة قاعدة البيانات عند بدء التطبيق لضمان وجود جدول REX_Ledger
-ees.setup_ledger() 
+ees.setup_ledger()
+
+# ----------------------------------------------------------------
+# الإضافة الجديدة والضرورية: المسار الافتراضي (Root Route) '/'
+# هذا يحل مشكلة 404 Not Found عند زيارة الرابط Essam97.pythonanywhere.com
+# ----------------------------------------------------------------
+@app.route('/')
+def home():
+    """تعرض رسالة تأكيد التشغيل للتحقق من التفعيل السحابي."""
+    return "AAL-CORE: تشغيل بدأ Zero-Cost Monetizable API (Flask) - الحالة التشغيلية القصوى"
+# ----------------------------------------------------------------
 
 def simple_summarize(text):
     """وظيفة تلخيص بسيطة (لغرض POC/Zero-Cost)."""
@@ -83,5 +93,6 @@ if __name__ == '__main__':
     print("--- AAL-CORE: بدأ تشغيل Zero-Cost Monetizable API (Flask) ---")
     # يتم تشغيل التطبيق في وضع التصحيح (Debug Mode) ليسهل عليك المتابعة
     app.run(debug=True)
-    # Mandatory for PythonAnywhere
+    
+# Mandatory for PythonAnywhere
 application = app
