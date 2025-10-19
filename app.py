@@ -1,98 +1,90 @@
+# File: app.py - الكود الكامل المُعدَّل
+# الهدف: تفعيل مسار /api/v1/event/record
+
 from flask import Flask, request, jsonify
-import ees_core_v1_0 as ees
 import json
-import time
+import sqlite3
+import os
+import sys
 
-# =================================================================
-# AAL-CORE Project Generation - Zero_Cost_Monetizable_API
-# ملف التطبيق الأساسي (app.py) - Flask
-# =================================================================
+# *****************************************************************
+# 1. تحديث مسار الاستيراد
+# *****************************************************************
+# الإجراء الإلزامي لـ PythonAnywhere لضمان عمل الاستيراد
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
 
+# استيراد الدوال الأساسية من النواة
+from ees_core_v1_0 import setup_ledger, record_and_hash_event, get_ledger_contents
+
+# *****************************************************************
+# 2. إعداد التطبيق (App Setup)
+# *****************************************************************
 app = Flask(__name__)
-# تهيئة قاعدة البيانات عند بدء التطبيق لضمان وجود جدول REX_Ledger
-ees.setup_ledger()
+# التأكد من إنشاء قاعدة البيانات إذا لم تكن موجودة عند تشغيل التطبيق
+setup_ledger()
 
-# ----------------------------------------------------------------
-# الإضافة الجديدة والضرورية: المسار الافتراضي (Root Route) '/'
-# هذا يحل مشكلة 404 Not Found عند زيارة الرابط Essam97.pythonanywhere.com
-# ----------------------------------------------------------------
+# *****************************************************************
+# 3. المسار الحالي (summarize) - تم للتحقق من النشر
+# *****************************************************************
 @app.route('/')
 def home():
-    """تعرض رسالة تأكيد التشغيل للتحقق من التفعيل السحابي."""
-    return "AAL-CORE: تشغيل بدأ Zero-Cost Monetizable API (Flask) - الحالة التشغيلية القصوى"
-# ----------------------------------------------------------------
+    """مسار اختبار بسيط للتحقق من تشغيل الخادم."""
+    return "Kian_AAL Web Core is Operational."
 
-def simple_summarize(text):
-    """وظيفة تلخيص بسيطة (لغرض POC/Zero-Cost)."""
-    # لغرض صفر تكلفة، نستخدم أبسط منطق: الاقتصاص إلى 10 كلمات أو 50 حرفًا
-    words = text.split()
-    if len(words) > 10:
-        summary_text = ' '.join(words[:10]) + '...'
-    elif len(text) > 50:
-        summary_text = text[:50] + '...'
-    else:
-        summary_text = text
+@app.route('/summarize')
+def summarize():
+    """مسار قديم تم استخدامه للتأكد من وصول الطلبات."""
+    return jsonify({
+        "status": "Operational",
+        "service": "summarize",
+        "message": "Service is running."
+    })
+
+# *****************************************************************
+# 4. المسار الجديد: تسجيل الأحداث السيادية (المحور 2)
+# *****************************************************************
+@app.route('/api/v1/event/record', methods=['POST'])
+def record_sovereign_event():
+    """
+    تسجيل حدث سيادي جديد في REX-Ledger.
+    يتوقع حمولة JSON تحتوي على 'event_type' و 'data_payload'.
+    """
+    if request.is_json:
+        content = request.get_json()
         
-    return summary_text, len(words)
-
-def record_api_usage(endpoint, user_input, word_count):
-    """توثيق استخدام الـ API في REX-Ledger لضمان النزاهة والتحليل المستقبلي."""
-    usage_data = {
-        "endpoint": endpoint,
-        "input_length": len(user_input),
-        "word_count": word_count,
-        "monetization_flag": "USAGE_COUNTED"
-    }
-    # تسجيل حدث "API_USE" في السجل الأبدي
-    ees.record_and_hash_event("API_USE", json.dumps(usage_data), "SUCCESS")
-
-
-@app.route('/api/v1/summarize', methods=['POST'])
-def summarize_text_api():
-    """الواجهة البرمجية للتلخيص."""
-    
-    # 1. التحقق من المدخلات
-    if not request.is_json:
-        return jsonify({"error": "Missing JSON in request"}), 400
+        event_type = content.get('event_type')
+        data_payload = content.get('data_payload')
         
-    data = request.get_json()
-    input_text = data.get('text', '')
-    
-    if not input_text or len(input_text) > 500:
-        return jsonify({"error": "Invalid or missing 'text' field. Max 500 chars."}), 400
-        
-    # 2. تنفيذ الخدمة
-    summary, word_count = simple_summarize(input_text)
-    
-    # 3. تسجيل الاستخدام (الآن يُسجل كل استخدام كـ "مال حقيقي" لتغذية التقييم المستقبلي)
-    try:
-        record_api_usage(request.path, input_text, word_count)
-    except Exception as e:
-        # تسجيل فشل التوثيق إن حدث
-        ees.record_and_hash_event("API_USE_FAIL", f"Error recording usage: {e}", "FAILURE")
-        print(f"⚠️ تحذير: فشل تسجيل الاستخدام في REX-Ledger: {e}")
-        
-    # 4. إرجاع النتيجة
-    response = {
-        "summary": summary,
-        "word_count_original": word_count,
-        "status": "COMPLETED"
-    }
-    
-    return jsonify(response)
+        # التحقق من المدخلات الإلزامية
+        if not event_type or not data_payload:
+            return jsonify({"status": "FAILURE", 
+                            "message": "Missing 'event_type' or 'data_payload' in request."}), 400
 
+        try:
+            # استدعاء دالة التسجيل المُحصّنة من ees_core_v1_0.py
+            new_hash = record_and_hash_event(event_type, json.dumps(data_payload), "SUCCESS")
+            
+            return jsonify({
+                "status": "RECORD_SUCCESS",
+                "message": "Sovereign event recorded successfully.",
+                "event_type": event_type,
+                "new_block_hash": new_hash
+            }), 201
 
-@app.route('/ping', methods=['GET'])
-def ping_service():
-    """نقطة نهاية للتأكد من أن الـ API قيد التشغيل."""
-    return jsonify({"status": "Operational", "project": "Zero_Cost_Monetizable_API"}), 200
+        except Exception as e:
+            # تسجيل أي فشل داخلي كحدث CORE_FAILURE
+            record_and_hash_event("CORE_FAILURE", json.dumps({"reason": str(e), "data": data_payload}), "FAILURE")
+            return jsonify({
+                "status": "CRITICAL_FAILURE",
+                "message": f"An internal error occurred during recording. Consult CORE_FAILURE logs. Error: {str(e)}"
+            }), 500
+            
+    return jsonify({"status": "FAILURE", "message": "Request must be JSON."}), 415
 
-
+# *****************************************************************
+# 5. تشغيل التطبيق محلياً (لا يتم استخدامه في PythonAnywhere)
+# *****************************************************************
 if __name__ == '__main__':
-    # لتشغيل الـ API محليًا (قابل للتوزيع لاحقًا على خدمة صفر تكلفة)
-    print("--- AAL-CORE: بدأ تشغيل Zero-Cost Monetizable API (Flask) ---")
-    # يتم تشغيل التطبيق في وضع التصحيح (Debug Mode) ليسهل عليك المتابعة
     app.run(debug=True)
-    
-# Mandatory for PythonAnywhere
-application = app
