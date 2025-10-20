@@ -106,3 +106,4 @@ def record_sovereign_event():
 if __name__ == '__main__':
     # التعديل الثالث: يجب استخدام 'application' هنا أيضاً لتشغيل التطبيق محلياً
     application.run(debug=True)
+    # تمت إضافة تعليق تجريبي لغرض التحديث
